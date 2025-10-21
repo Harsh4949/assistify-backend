@@ -30,6 +30,10 @@ app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
+app.get('/', (req, res) => {
+  res.send('Welcome to the API server');
+});
+
 app.listen(config.port, () => {
   console.log(`Server listening on port ${config.port}`);
 });
