@@ -3,7 +3,7 @@ const Queue = [];
 function addTask(task) {
   Queue.push(task);
   processNext();
-}
+} 
 
 let processing = false;
 
