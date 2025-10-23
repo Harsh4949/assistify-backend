@@ -49,21 +49,7 @@ exports.heartbeat = async (req, res) => {
   }
 };
 
-const Device = require('../models/Device');
-const DeviceHeartbeat = require('../models/DeviceHeartbeat');
 
-/**
- * Endpoint: POST /api/v1/devices/ack
- * Purpose: Device confirms receipt or completion of commands/pings from the backend.
- * Example Body:
- * {
- *   "deviceId": "652fdd199d8a21e1261e1234",
- *   "commandId": "start_session",
- *   "pingId": "abc123",
- *   "status": "ok",
- *   "message": "Ping response received"
- * }
- */
 exports.ack = async (req, res) => {
   try {
     const { deviceId, commandId, pingId, status, message } = req.body;
