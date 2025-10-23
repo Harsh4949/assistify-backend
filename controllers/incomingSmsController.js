@@ -38,3 +38,19 @@ exports.receiveSms = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+exports.listSmsBySession = async (req, res) => {
+  try {
+    const { sessionId } = req.query;
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId required.' });
+    }
+    const msgs = await IncomingSms.find({ sessionId })
+      .sort({ receivedAt: -1 });
+    res.json({ success: true, data: msgs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
