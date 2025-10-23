@@ -8,6 +8,7 @@ const deviceRoutes = require('./routes/device');
 const sessionRoutes = require('./routes/session');
 const messageRoutes = require('./routes/message');
 const adminRoutes = require('./routes/admin');
+const incomingSmsRoutes = require('./routes/incomingSms');
 
 const cors = require('cors');
 
@@ -32,6 +33,7 @@ app.use('/api/v1/devices', deviceRoutes);
 app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/incoming-sms', incomingSmsRoutes);
 
 app.get('/', (req, res) => {
   res.send('Welcome to the API server');
