@@ -49,9 +49,78 @@ exports.heartbeat = async (req, res) => {
   }
 };
 
-exports.ack = (req, res) => {
-  // Acknowledge commands or ping from device
-  res.json({ ok: true });
+const Device = require('../models/Device');
+const DeviceHeartbeat = require('../models/DeviceHeartbeat');
+
+/**
+ * Endpoint: POST /api/v1/devices/ack
+ * Purpose: Device confirms receipt or completion of commands/pings from the backend.
+ * Example Body:
+ * {
+ *   "deviceId": "652fdd199d8a21e1261e1234",
+ *   "commandId": "start_session",
+ *   "pingId": "abc123",
+ *   "status": "ok",
+ *   "message": "Ping response received"
+ * }
+ */
+exports.ack = async (req, res) => {
+  try {
+    const { deviceId, commandId, pingId, status, message } = req.body;
+
+    // Validate deviceId
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    // Find device
+    const device = await Device.findById(deviceId);
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    // Update lastHeartbeatAt / lastAckTime
+    device.lastHeartbeatAt = new Date();
+    device.status = 'online';
+    await device.save();
+
+    // Optionally store quick boolean/metrics entry for ACK history
+    await DeviceHeartbeat.create({
+      deviceId: deviceId,
+      metrics: {
+        battery: device.battery || null,
+        networkType: device.network || 'unknown',
+        queueDepth: 0
+      },
+      at: new Date()
+    });
+
+    // Log ack details
+    console.log(`[ACK] Device ${deviceId} (${device.model}) -> ${status || 'ok'} : ${commandId || pingId || 'ping'}`);
+
+    // Optional: respond differently for pings
+    if (pingId) {
+      return res.json({
+        ok: true,
+        ackType: 'ping',
+        pingId,
+        message: message || 'Ping acknowledgment received',
+        timestamp: new Date()
+      });
+    }
+
+    // Otherwise, normal command ack
+    res.json({
+      ok: true,
+      ackType: 'command',
+      commandId,
+      message: message || 'Command acknowledgment received',
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('[ACK_ERROR]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 };
 
 exports.smsResult = async (req, res) => {
