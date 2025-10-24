@@ -11,11 +11,8 @@ const DeviceSchema = new mongoose.Schema(
     capabilities: {
       smsSend: { type: Boolean }
     },
-    status: {
-      type: String,
-      enum: ['online', 'offline', 'busy'],
-      default: 'offline'
-    },
+    assignedSessionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Session' }],
+    status: { type: String, enum: ['online', 'busy', 'offline'], default: 'online' },
     lastHeartbeatAt: { type: Date },
     battery: { type: Number },
     network: { type: String },

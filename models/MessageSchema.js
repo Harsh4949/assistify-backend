@@ -1,24 +1,23 @@
 const mongoose = require('mongoose');
 
-const MessageSchema = new mongoose.Schema(
-  {
-    sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
-    to: { type: String },
-    body: { type: String },
-    status: {
-      type: String,
-      enum: ['queued', 'dispatched', 'sent', 'delivered', 'failed', 'expired']
-    },
-    deviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device' },
-    attempts: { type: Number, default: 0 },
-    lastError: { type: String },
-    providerMessageId: { type: String },
-    deliveredAt: { type: Date },
-    failedAt: { type: Date }
+const { Schema, model } = mongoose;
+
+const MessageSchema = new Schema({
+  sessionId: { type: Schema.Types.ObjectId, ref: 'Session', required: true },
+  deviceId: { type: Schema.Types.ObjectId, ref: 'Device' },
+  to: { type: String, required: true },
+  body: { type: String, required: true },
+  status: {
+    type: String,
+    enum: ['queued', 'dispatched', 'sent', 'failed', 'delivered'],
+    default: 'queued'
   },
-  { timestamps: true }
-);
+  sentAt: { type: Date },       // time message was sent
+  deliveredAt: { type: Date },  // time delivery was confirmed
+  error: { type: String }
+}, { timestamps: true });
 
-MessageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 });
+// Optional: index for efficient session-based queries
+MessageSchema.index({ sessionId: 1, createdAt: -1 });
 
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = model('Message', MessageSchema);
