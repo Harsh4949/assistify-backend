@@ -48,31 +48,34 @@ exports.createSession = async (req, res) => {
 
 exports.stopSession = async (req, res) => {
   try {
-    const sessionId = req.params.id;
-    const session = await Session.findById(sessionId);
-    if (!session) return res.status(404).json({ error: 'Session not found' });
-
-    if (session.state !== 'active') {
-      return res.status(400).json({ error: 'Session not active' });
+    const { id } = req.params;
+    const session = await Session.findById(id);
+    if (!session || session.state !== 'active') {
+      return res.status(404).json({ error: 'Session not found or inactive' });
     }
 
-    session.state = 'stopping';
+    // Update session
+    session.state = 'stopped';
     session.stoppedAt = new Date();
     await session.save();
 
+    // Free assigned device
     const device = await Device.findById(session.assignedDeviceId);
     if (device) {
-      await fcmService.sendToDevice(device.fcmToken, {
-        type: 'stop_session',
-        sessionId: session._id.toString()
-      });
       device.status = 'online';
       device.assignedSessionId = null;
       await device.save();
     }
 
-    res.json({ ok: true });
+    // Optional: notify device via FCM to stop current session
+    await fcmService.sendToDevice(device.fcmToken, {
+      type: 'stop_session',
+      sessionId: session._id.toString()
+    });
+
+    res.json({ success: true, message: 'Session stopped and device released' });
   } catch (err) {
+    console.error('[STOP_SESSION]', err);
     res.status(500).json({ error: err.message });
   }
 };
