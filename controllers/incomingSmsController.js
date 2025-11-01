@@ -2,15 +2,7 @@ const mongoose = require('mongoose');
 const IncomingSms = require('../models/IncomingSmsSchema');
 const Session = require('../models/SessionSchema');
 
-/**
- * POST /api/v1/incoming-sms
- * {
- *   sessionId: "SESSION_OBJECT_ID",
- *   from: "+911234567890",
- *   body: "SMS text here",
- *   receivedAt: <timestamp> (optional)
- * }
- */
+
 exports.receiveSms = async (req, res) => {
   try {
     const { sessionId, from, body, receivedAt } = req.body;
@@ -31,11 +23,21 @@ exports.receiveSms = async (req, res) => {
       return res.status(400).json({ error: 'Session is not active.' });
     }
 
+    // Parse receivedAt safely
+    let parsedDate = new Date();
+    if (receivedAt) {
+      const ts = Number(receivedAt);
+      const tempDate = Number.isFinite(ts) ? new Date(ts) : new Date(receivedAt);
+      if (!isNaN(tempDate.getTime())) {
+        parsedDate = tempDate;
+      }
+    }
+
     const sms = await IncomingSms.create({
       sessionId,
       from,
       body,
-      receivedAt: receivedAt ? new Date(Number(receivedAt)) : new Date()
+      receivedAt: parsedDate
     });
 
     // Optionally, do additional processing or notification here
