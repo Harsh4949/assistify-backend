@@ -35,9 +35,6 @@ app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/incoming-sms', incomingSmsRoutes);
-// Alias for legacy clients without /api/v1 prefix
-app.use('/incoming-sms', incomingSmsRoutes);
-
 
 
 // Run every minute to release expired sessions
