@@ -38,9 +38,15 @@ app.use('/api/v1/incoming-sms', incomingSmsRoutes);
 
 
 // Run every minute tko release expired sessions
-setInterval(releaseExpiredSessions, 60 * 1000);
+let intervalMs = 60_000; // default 1 minute
 
+async function smartCleanup() {
+  const expired = await releaseExpiredSessions();
+  intervalMs = expired > 0 ? 10_000 : 60_000; // if found expired, check sooner
+  setTimeout(smartCleanup, intervalMs);
+}
 
+smartCleanup();
 app.get('/', (req, res) => {
   res.send('Welcome to the API server');
 });
