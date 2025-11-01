@@ -2,7 +2,8 @@ const express = require('express');
 const controller = require('../controllers/incomingSmsController');
 const router = express.Router();
 
-router.post('/', controller.receiveSms);
-router.get('/', controller.listSmsBySession);
+// Alias for legacy clients without the /api/v1 prefix
+router.post('/incoming-sms', controller.receiveSms);
+router.get('/incoming-sms', controller.listSmsBySession);
 
 module.exports = router;

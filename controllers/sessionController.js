@@ -2,22 +2,49 @@ const Session = require('../models/SessionSchema');
 const Device = require('../models/DeviceSchema');
 const fcmService = require('../services/fcm');
 const selectionService = require('../services/selection');
+const mongoose = require('mongoose');
 
 exports.createSession = async (req, res) => {
   try {
-    const { userId, ttlSeconds, preferredDeviceId } = req.body;
-    const expiresAt = new Date(Date.now() + (ttlSeconds || 600) * 1000);
-
-    // Select device (preferred or best available)
-    let device = null;
-    if (preferredDeviceId) device = await Device.findById(preferredDeviceId);
-    if (!device || device.status !== 'online') {
-      device = await selectionService.selectAvailableDevice();
+    const { userId, ttlSeconds = 600, preferredDeviceId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
     }
-    if (!device) return res.status(503).json({ error: 'No available relay device online' });
 
-    // Create session
-    const session = new Session({
+    const ttlMs = Number(ttlSeconds) * 1000;
+    const expiresAt = new Date(Date.now() + (Number.isFinite(ttlMs) ? ttlMs : 600000));
+
+    let device = null;
+
+    // 1) Try preferred device if valid and online
+    if (preferredDeviceId && mongoose.Types.ObjectId.isValid(preferredDeviceId)) {
+      device = await Device.findOne({ _id: preferredDeviceId, status: 'online' });
+    }
+
+    // 2) Use selectionService
+    if (!device) {
+      const candidate = await selectionService.selectAvailableDevice().catch((err) => {
+        console.error('[CREATE_SESSION] selectionService error:', err);
+        return null;
+      });
+
+      if (candidate) {
+        device = candidate.save ? candidate : await Device.findById(candidate._id);
+        if (device && device.status !== 'online') device = null;
+      }
+    }
+
+    // 3) Fallback query
+    if (!device) {
+      device = await Device.findOne({ status: 'online' }).sort({ updatedAt: 1 });
+    }
+
+    if (!device) {
+      const onlineCount = await Device.countDocuments({ status: 'online' });
+      return res.status(503).json({ error: 'No available relay device online', onlineCount });
+    }
+
+    const session = await Session.create({
       userId,
       assignedDeviceId: device._id,
       state: 'active',
@@ -25,24 +52,42 @@ exports.createSession = async (req, res) => {
       startedAt: new Date()
     });
 
-    await session.save();
+    const deviceUpdate = {
+      status: 'busy',
+      assignedSessionId: session._id,
+      lastAssignedAt: new Date()
+    };
+    if (Array.isArray(device.assignedSessionIds)) {
+      deviceUpdate.$addToSet = { assignedSessionIds: session._id };
+    }
 
-    // Mark device busy
-    device.status = 'busy';
-    device.assignedSessionId = session._id;
-    await device.save();
+    await Device.updateOne({ _id: device._id }, deviceUpdate);
 
-    // Send start_session command via FCM
-    await fcmService.sendToDevice(device.fcmToken, {
-      type: 'start_session',
-      sessionId: session._id.toString(),
-      userId,
-      expiresAt: expiresAt.toISOString()
-    });
+    try {
+      await fcmService.sendToDevice(device.fcmToken, {
+        type: 'start_session',
+        sessionId: session._id.toString(),
+        userId,
+        expiresAt: expiresAt.toISOString()
+      });
+    } catch (fcmErr) {
+      console.error('[CREATE_SESSION] FCM send failed:', fcmErr);
+      await Device.updateOne(
+        { _id: device._id },
+        {
+          status: 'online',
+          assignedSessionId: null,
+          ...(Array.isArray(device.assignedSessionIds) ? { $pull: { assignedSessionIds: session._id } } : {})
+        }
+      );
+      await Session.findByIdAndDelete(session._id).catch(() => {});
+      return res.status(502).json({ error: 'Failed to contact relay device' });
+    }
 
-    res.json(session);
+    return res.json(session);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[CREATE_SESSION] unexpected error:', err);
+    return res.status(500).json({ error: err.message });
   }
 };
 

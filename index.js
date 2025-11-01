@@ -34,7 +34,7 @@ app.use('/api/v1/devices', deviceRoutes);
 app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1/incoming-sms', incomingSmsRoutes);
+app.use('/api/v1', incomingSmsRoutes);
 
 
 // Run every minute tko release expired sessions
