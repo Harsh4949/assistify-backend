@@ -34,10 +34,13 @@ app.use('/api/v1/devices', deviceRoutes);
 app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1', incomingSmsRoutes);
+app.use('/api/v1/incoming-sms', incomingSmsRoutes);
+// Alias for legacy clients without /api/v1 prefix
+app.use('/incoming-sms', incomingSmsRoutes);
 
 
-// Run every minute tko release expired sessions
+
+// Run every minute to release expired sessions
 let intervalMs = 60_000; // default 1 minute
 
 async function smartCleanup() {
