@@ -110,13 +110,17 @@ exports.stopSession = async (req, res) => {
       device.status = 'online';
       device.assignedSessionId = null;
       await device.save();
-    }
 
-    // Optional: notify device via FCM to stop current session
-    await fcmService.sendToDevice(device.fcmToken, {
-      type: 'stop_session',
-      sessionId: session._id.toString()
-    });
+      // Optional: notify device via FCM to stop current session
+      try {
+        await fcmService.sendToDevice(device.fcmToken, {
+          type: 'stop_session',
+          sessionId: session._id.toString()
+        });
+      } catch (fcmErr) {
+        console.error('[STOP_SESSION] FCM send failed:', fcmErr);
+      }
+    }
 
     res.json({ success: true, message: 'Session stopped and device released' });
   } catch (err) {
