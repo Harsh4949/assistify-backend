@@ -1,21 +1,18 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const SessionSchema = new mongoose.Schema(
-  {
-    userId: { type: String, required: true },
-    assignedDeviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device' },
-    state: {
-      type: String,
-      enum: ['requested', 'active', 'stopping', 'ended', 'expired'],
-      default: 'requested'
-    },
-    expiresAt: { type: Date, required: true },
-    startedAt: { type: Date },
-    stoppedAt: { type: Date },
-    rateLimitPerMin: { type: Number, default: 30 }
+const SessionSchema = new Schema({
+  userId: { type: String, required: true },
+  assignedDeviceId: { type: Schema.Types.ObjectId, ref: 'Device' },
+  state: {
+    type: String,
+    enum: ['active', 'ended', 'stopped', 'expired'],
+    default: 'active'
   },
-  { timestamps: true }
-);
+  startedAt: { type: Date, default: Date.now },
+  stoppedAt: { type: Date },
+  expiresAt: { type: Date, required: true }
+}, { timestamps: true });
 
 SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 

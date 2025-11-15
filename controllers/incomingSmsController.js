@@ -51,6 +51,9 @@ exports.receiveSms = async (req, res) => {
 
 exports.listSmsBySession = async (req, res) => {
   try {
+    console.log('[LIST_INCOMING_SMS] req.query:', req.query);
+    console.log('[LIST_INCOMING_SMS] req.body:', req.body);
+    
     // accept from query, body or params
     let sessionIdRaw = req.query.sessionId || req.body?.sessionId || req.params?.sessionId;
 

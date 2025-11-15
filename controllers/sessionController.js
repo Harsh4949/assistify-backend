@@ -94,9 +94,18 @@ exports.createSession = async (req, res) => {
 exports.stopSession = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
+
     const session = await Session.findById(id);
-    if (!session || session.state !== 'active') {
-      return res.status(404).json({ error: 'Session not found or inactive' });
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    
+    if (session.state !== 'active') {
+      return res.status(400).json({ error: 'Session is not active' });
     }
 
     // Update session
@@ -105,27 +114,42 @@ exports.stopSession = async (req, res) => {
     await session.save();
 
     // Free assigned device
-    const device = await Device.findById(session.assignedDeviceId);
-    if (device) {
-      device.status = 'online';
-      device.assignedSessionId = null;
-      await device.save();
+    if (session.assignedDeviceId) {
+      const device = await Device.findById(session.assignedDeviceId);
+      if (device) {
+        device.status = 'online';
+        device.assignedSessionId = null;
+        
+        // Remove from assignedSessionIds array if it exists
+        if (Array.isArray(device.assignedSessionIds)) {
+          device.assignedSessionIds = device.assignedSessionIds.filter(
+            sid => sid.toString() !== session._id.toString()
+          );
+        }
+        
+        await device.save();
 
-      // Optional: notify device via FCM to stop current session
-      try {
-        await fcmService.sendToDevice(device.fcmToken, {
-          type: 'stop_session',
-          sessionId: session._id.toString()
-        });
-      } catch (fcmErr) {
-        console.error('[STOP_SESSION] FCM send failed:', fcmErr);
+        // Optional: notify device via FCM to stop current session
+        if (device.fcmToken) {
+          try {
+            await fcmService.sendToDevice(device.fcmToken, {
+              type: 'stop_session',
+              sessionId: session._id.toString()
+            });
+          } catch (fcmErr) {
+            console.error('[STOP_SESSION] FCM send failed:', fcmErr);
+            // Don't fail the request if FCM fails
+          }
+        }
+      } else {
+        console.warn(`[STOP_SESSION] Device ${session.assignedDeviceId} not found`);
       }
     }
 
-    res.json({ success: true, message: 'Session stopped and device released' });
+    return res.json({ success: true, message: 'Session stopped and device released' });
   } catch (err) {
-    console.error('[STOP_SESSION]', err);
-    res.status(500).json({ error: err.message });
+    console.error('[STOP_SESSION] Error:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 };
 
