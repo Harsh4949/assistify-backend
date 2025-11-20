@@ -11,8 +11,14 @@ const adminRoutes = require('./routes/admin');
 const incomingSmsRoutes = require('./routes/incomingSms');
 const { releaseExpiredSessions } = require('./jobs/sessionCleanup');
 
-const cors = require('cors');
 
+const pairRouter = require('./routes/pair');
+const devicesRouter = require('./routes/assistifyDevices');
+
+
+
+
+const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const app = express();
@@ -29,12 +35,20 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
   
-// Route mounting
+// Route mounting Releay for ASSISTIFY RELAY SERVER
 app.use('/api/v1/devices', deviceRoutes);
 app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/incoming-sms', incomingSmsRoutes);
+
+
+// API FOR ASSISTIFY Application
+
+app.use('/api/pair', pairRouter);
+app.use('/api/devices', devicesRouter);
+
+
 
 
 // Run every minute to release expired sessions
