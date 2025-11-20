@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { generatePairingPayload, sha256Hex } = require('../utils/keygen');
-const { verifyIdToken } = require('../utils/firebaseAuth');
+const fcmService = require('../services/fcm');
 const AssistifyDevice = require('../models/AssistifyModel/AssistifyDeviceSchema');
 
 /**
@@ -9,7 +9,7 @@ const AssistifyDevice = require('../models/AssistifyModel/AssistifyDeviceSchema'
  * Protected endpoint (verify Firebase token). The web dashboard calls this.
  * Returns pairing payload JSON which will be rendered as QR.
  */
-router.post('/generate', verifyIdToken, async (req, res) => {
+router.post('/generate', fcmService.verifyIdToken, async (req, res) => {
   try {
     const payload = generatePairingPayload(process.env.QR_EXPIRES_MINUTES ? parseInt(process.env.QR_EXPIRES_MINUTES) : 5);
     // store pending entry with keyId + deviceKeyHash (store hashed key)

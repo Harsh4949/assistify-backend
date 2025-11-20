@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { verifyIdToken } = require('../utils/firebaseAuth');
+const fcmService = require('../services/fcm');
 const AssistifyDevice = require('../models/AssistifyModel/AssistifyDeviceSchema');
 
 /**
@@ -8,7 +8,7 @@ const AssistifyDevice = require('../models/AssistifyModel/AssistifyDeviceSchema'
  * Body: { deviceId, keyId, deviceKeyHash, fcmToken, model, capabilities }
  * Auth: Firebase ID token (Bearer)
  */
-router.post('/register', verifyIdToken, async (req, res) => {
+router.post('/register', fcmService.verifyIdToken, async (req, res) => {
   const { deviceId, keyId, deviceKeyHash, fcmToken, model, capabilities } = req.body;
   if (!deviceId || !keyId || !deviceKeyHash) return res.status(400).json({ error: 'Missing fields' });
 
@@ -51,7 +51,7 @@ router.post('/register', verifyIdToken, async (req, res) => {
 /**
  * GET /api/devices/:deviceId
  */
-router.get('/:deviceId', verifyIdToken, async (req, res) => {
+router.get('/:deviceId', fcmService.verifyIdToken, async (req, res) => {
   try {
     const doc = await AssistifyDevice.findOne({ deviceId: req.params.deviceId, userId: req.uid }).lean();
     if (!doc) return res.status(404).json({ ok: false, error: 'not found' });
